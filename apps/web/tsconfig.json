@@ -11,10 +11,9 @@
     "moduleResolution": "Bundler",
     "rewriteRelativeImportExtensions": false,
     "types": ["vite/client", "node"],
-    "baseUrl": ".",
-    "ignoreDeprecations": "5.0",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "*": ["./*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
