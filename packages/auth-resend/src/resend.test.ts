@@ -61,10 +61,10 @@ describe("ResendMailer", () => {
       expect(req?.url).toBe(RESEND_API_URL)
       expect(req?.authorization).toBe("Bearer re_123")
       expect(req?.body).toEqual({
-        from: "JobDetective <no-reply@app.dev>",
+        from: "Scaffold <no-reply@scaffold.dev>",
         to: ["alice@example.com"],
-        subject: "Your JobDetective sign-in code",
-        text: "Your JobDetective sign-in code is ABCDEFGH."
+        subject: "Your Scaffold sign-in code",
+        text: "Your Scaffold sign-in code is ABCDEFGH."
       })
     } finally {
       if (previous === undefined) delete process.env.RESEND_API_KEY

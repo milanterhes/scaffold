@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
+    { "path": "./scripts" },
     { "path": "./packages/core" },
     { "path": "./packages/auth" },
     { "path": "./packages/auth-postgres" },

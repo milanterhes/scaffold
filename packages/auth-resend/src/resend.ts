@@ -24,7 +24,7 @@ export const ResendMailerLayer: Layer.Layer<Mailer, Config.ConfigError, HttpClie
     const apiKey = yield* Config.redacted("RESEND_API_KEY")
     const from = yield* Config.withDefault(
       Config.string("RESEND_FROM"),
-      "JobDetective <no-reply@app.dev>"
+      "Scaffold <no-reply@scaffold.dev>"
     )
 
     const sendEmailCode = (to: string, code: string) =>
@@ -35,8 +35,8 @@ export const ResendMailerLayer: Layer.Layer<Mailer, Config.ConfigError, HttpClie
           HttpClientRequest.bodyJsonUnsafe({
             from,
             to: [to],
-            subject: "Your JobDetective sign-in code",
-            text: `Your JobDetective sign-in code is ${code}.`
+            subject: "Your Scaffold sign-in code",
+            text: `Your Scaffold sign-in code is ${code}.`
           })
         )
         const response = yield* http.execute(request).pipe(
