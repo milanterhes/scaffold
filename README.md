@@ -1,82 +1,227 @@
 # Scaffold
 
-A starter monorepo for a full-stack TypeScript app with authentication, a
-Postgres-backed domain, and a TanStack Start front end — everything wired and
-tested so you can copy it and start building your own feature on day one.
+A production-shaped starter for a full-stack TypeScript app: session-based
+authentication, a Postgres-backed domain, and a TanStack Start front end — all
+wired together, tested, and ready to copy. Add your first real feature by
+following the included `notes` example.
 
-## What's inside
-
-```
-apps/
-  web/            TanStack Start SPA + Effect HttpApi mounted at /api/*
-                  (auth + notes groups), shadcn UI, typed clients
-packages/
-  auth/           The auth core: email-code + OAuth protocol, sessions,
-                  account linking, privacy/delete. Pure Effect — no DB/email deps.
-  auth-postgres/  AuthStorage + OAuthPendingStore on Postgres, own migrations
-  auth-resend/    Resend mailer (falls back to a logger mailer with no key)
-  core/           Shared Postgres layer (PgLive) + test-DB helpers
-  notes/          A demo domain: Model, migration, repo, schema, tests
-scripts/
-  migrate.ts      Runs app + auth migrations against DATABASE_URL
-```
+Everything is **Effect-first**: the API, the auth protocol, the database layer,
+and the tests are built on [Effect](https://effect.website/) 4. The front end is
+TanStack Start + React + shadcn, consuming a typed client generated from the
+same `HttpApi` contract the server implements.
 
 ## Features that work out of the box
 
-- **Email-code sign-in** — no email provider needed to try it: without a
-  `RESEND_API_KEY` the code prints to the server terminal.
-- **OAuth** — Google, LinkedIn, GitHub providers, each enabled by setting its
-  `*_CLIENT_ID` / `*_CLIENT_SECRET` / `*_REDIRECT_URI` in `.env`.
-- **Sessions** — HttpOnly cookie with sliding expiry; `CurrentUser` is
-  available to any handler behind `SessionMiddleware`.
+- **Email-code sign-in** — no email provider needed to try it. Without a
+  `RESEND_API_KEY` the code is printed to the server terminal.
+- **OAuth** — Google, LinkedIn, and GitHub, each switched on by setting three
+  env vars. OIDC (Google, LinkedIn) and OAuth2 (GitHub) are both handled.
+- **Sessions** — HttpOnly cookie with sliding expiry; any handler behind
+  `SessionMiddleware` gets a `CurrentUser` for free.
 - **Account linking** — the same verified email across email + OAuth merges
-  into one user. A privacy/delete-me endpoint is included.
-- **A worked example** — the `notes` group shows the full vertical slice:
-  schema → Postgres repo → `HttpApi` group → impl → typed client → React page
-  → tests. Copy it to add your first real feature.
+  into one account; unverified OAuth emails are forced through email-code
+  verification. A privacy / "delete me" endpoint ships with it.
+- **A complete worked example** — the `notes` package is a full vertical slice
+  (schema → Postgres repo → `HttpApi` group → impl → typed client → React page
+  → tests). Copy it to build your first feature.
+- **Real infra conventions** — Postgres via Docker, Effect migrations, a
+  dedicated test database, Turbo-driven dev/test/lint/build across the
+  monorepo.
 
-## Getting started
+## Repository layout
 
-```bash
-# 1. Copy the repo and rename it
-cp -R scaffold my-app && cd my-app
-rg -l '@app|Scaffold|scaffold' --hidden -g '!node_modules' -g '!.git' | xargs sed -i '' 's/@app/YOUR_SCOPE/g; s/scaffold/my-app/g; s/Scaffold/My App/g'
-
-# 2. Install, start Postgres, migrate
-pnpm install
-docker compose up -d
-cp .env.example .env        # edit DATABASE_URL + providers as needed
-pnpm migrate
-
-# 3. Run the web app
-pnpm dev                   # http://localhost:3000
+```
+apps/
+  web/                 TanStack Start SPA; the Effect HttpApi is mounted at
+                       /api/* inside the same server process.
+    src/api/           HttpApi groups (notes), auth wiring, typed clients
+    src/routes/        __root, index, signin, notes, api/$ (the API splat)
+    components/ui/     shadcn components (button, table, …)
+packages/
+  auth/                The auth core — pure Effect, no DB/email/HTTP deps:
+                       email-code + OAuth protocol, sessions, linking, privacy.
+                       Defines the AuthStorage and Mailer seams.
+  auth-postgres/       Postgres AuthStorage + OAuthPendingStore, its own schema
+                       (auth.*) and migrations.
+  auth-resend/         Resend mailer. Falls back to a logger mailer with no key.
+  core/                Shared Postgres client (PgLive) + test-database helpers.
+  notes/               Demo domain: Model, migration, repo, schema, tests.
+scripts/
+  migrate.ts           Applies app migrations, then the auth schema migrations.
 ```
 
-The `pnpm test` / `pnpm lint` tasks run across all packages via Turbo.
+The `apps/web` app composes the auth and notes `HttpApi` groups into one
+`WebApi` and mounts it at `/api/*` via a TanStack Start server route
+(`src/routes/api/$.ts`). All packages share one `tsconfig.base.json`
+(`strict`, `exactOptionalPropertyTypes`, `erasableSyntaxOnly`) and one pnpm
+version catalog.
+
+## Quick start
+
+### 1. Copy and (optionally) rename
+
+Keep it as `scaffold`/`@app` and skip to step 2, or rename in one pass:
+
+```bash
+cp -R scaffold my-app && cd my-app
+# Replace the package scope and app name everywhere they appear.
+# Re-run `pnpm install` afterwards to refresh the lockfile.
+grep -rIl --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git \
+  --exclude-dir=.turbo --exclude=pnpm-lock.yaml -e '@app' -e 'scaffold' -e 'Scaffold' . \
+  | xargs sed -i '' -e 's/@app/YOUR_SCOPE/g' -e 's/scaffold/my-app/g' -e 's/Scaffold/My App/g'
+rm -rf pnpm-lock.yaml node_modules && pnpm install
+```
+
+The three tokens cover every reference: `@app` is the package scope (imports,
+`package.json` names, `tsconfig` references), `scaffold` is the lower-case
+name (repo/package name, Postgres database, model identifier, logger prefix),
+and `Scaffold` is the display name (page headings, `<title>`).
+
+### 2. Install and start Postgres
+
+```bash
+pnpm install
+docker compose up -d        # postgres on :5432, database "scaffold"
+```
+
+### 3. Configure environment
+
+```bash
+cp .env.example .env        # then edit as needed
+```
+
+Defaults are already usable: `DATABASE_URL` points at the Docker Postgres, and
+auth runs with email-code only (code printed to the terminal) until you add a
+`RESEND_API_KEY` or an OAuth provider.
+
+### 4. Migrate and run
+
+```bash
+pnpm migrate                # app migrations + auth migrations
+pnpm dev                    # http://localhost:3000
+```
+
+Sign in with any email, read the code from the server terminal, and you're in.
+The **My notes** link exercises the full vertical slice.
+
+## Authentication
+
+### Endpoints
+
+The auth group is served under `/api/auth/*`:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/auth/email-code` | Request a sign-in code (rate-limited) |
+| `POST` | `/auth/email-code/verify` | Redeem a code, set the session cookie |
+| `GET` | `/auth/oauth/:provider/start` | Begin an OAuth flow (PKCE + state) |
+| `GET` | `/auth/oauth/:provider/callback` | Exchange the code, link, set the cookie |
+| `POST` | `/auth/signout` | Clear the session cookie, invalidate server-side |
+| `GET` | `/auth/me` | The current user (session required) |
+| `DELETE` | `/auth/me` | Delete the account and all auth data |
+
+Everything that needs a user is behind `SessionMiddleware`; missing, invalid,
+or expired sessions return `401`, and a rotated token is re-issued on the
+response automatically.
+
+### Seams
+
+`packages/auth` is deliberately dependency-free. The three external concerns
+are interfaces you provide at the app's composition root
+(`apps/web/src/api/auth.live.ts`):
+
+| Seam | Default implementation | Swap for |
+| --- | --- | --- |
+| `AuthStorage` | Postgres (`auth-postgres`) | In-memory for tests |
+| `Mailer` | Resend (`auth-resend`) | Logger mailer (no key) |
+| `OAuthPendingStore` | Postgres (`auth-postgres`) | In-memory for tests |
+
+Each falls back gracefully: without `DATABASE_URL` auth uses memory storage,
+without a Resend key codes print to the terminal, and OAuth providers only
+appear on the sign-in page when their env vars are set.
+
+### OAuth providers
+
+Enable any provider by adding its credentials to `.env`. The redirect URIs
+(`http://localhost:3000/api/auth/oauth/<provider>/callback`) must be registered
+with the provider.
+
+| Provider | Env prefix | Notes |
+| --- | --- | --- |
+| Google | `GOOGLE_` | OIDC |
+| LinkedIn | `LINKEDIN_` | OIDC |
+| GitHub | `GITHUB_` | OAuth2; set `GITHUB_USER_AGENT` too (GitHub rejects the default) |
 
 ## Adding your first feature
 
-The `notes` package is the template. Create a sibling package (or a new group
-inside `apps/web`) that:
+The `notes` package is the template — copy its shape. A new feature is a
+vertical slice across a domain package and the web app:
 
-1. Defines a `Model.Class` in `packages/<feature>/src/db/models.ts`.
-2. Owns its migrations in `packages/<feature>/src/db/migrations.ts` (merged by
-   `scripts/migrate.ts`).
-3. Provides `Effect.fnUntraced` repo functions in
-   `packages/<feature>/src/repo/*.repo.ts`.
-4. Declares an `HttpApiGroup` + `HttpApi` and implements it with
-   `HttpApiBuilder.group` (see `apps/web/src/api/notes.api.ts` /
-   `notes.impl.ts`).
-5. Adds a typed client (`apps/web/src/api/notes.ts`) and a route
-   (`apps/web/src/routes/notes.tsx`).
-6. Mirrors `packages/notes/src/repo/notes.repo.test.ts` and
-   `apps/web/src/api/notes.api.test.ts`.
+1. **Domain package** — `packages/<feature>/`
+   - `src/db/models.ts` — a `Model.Class` for your table (branded id, typed
+     columns).
+   - `src/db/migrations.ts` — the migration, as an Effect program. It is
+     merged into the migrator by `scripts/migrate.ts`.
+   - `src/repo/*.repo.ts` — `Effect.fnUntraced` functions that talk to
+     Postgres through `SqlClient` (no ORM).
+   - `src/schema/api.ts` — the API wire schemas (`Schema.Struct` etc.).
+   - Tests alongside: `src/repo/*.repo.test.ts` using the shared test DB.
+2. **HTTP group** — `apps/web/src/api/<feature>.api.ts` declares endpoints
+   (guard them with `SessionMiddleware`), `<feature>.impl.ts` implements them
+   with `HttpApiBuilder.group`, and `<feature>.ts` is the typed client.
+3. **Route + page** — `apps/web/src/routes/<feature>.tsx` using the typed
+   client and the shadcn components.
+4. **API test** — `apps/web/src/api/<feature>.api.test.ts` builds the composed
+   router, signs in through the real flow, and asserts on the endpoints.
+
+Wire the group into `apps/web/src/api/web.api.ts` (one `addHttpApi` line) and
+the impl into `mount.ts` (one `Layer.mergeAll` entry).
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Run the web app (Turbo, `:3000`) |
+| `pnpm build` | Type-check and build every package |
+| `pnpm test` | Run every package's Vitest suite |
+| `pnpm lint` | `tsc --noEmit` across the repo |
+| `pnpm migrate` | Apply app migrations, then the auth-schema migrations |
+| `pnpm --filter <pkg> <task>` | Target a single package |
+
+## Testing
+
+Vitest runs in every package. DB-backed tests use a dedicated
+`scaffold_test` database that is created on demand and migrated in
+`beforeAll` (`packages/core/src/test-utils.ts` exports `setupTestDb` and
+`TestDbLayer`).
+
+The web API tests exercise the **real composed router** through a fetch-style
+bridge — sign-in via the actual email-code flow, then assertions against the
+session-protected endpoints. This mirrors the auth package's own test harness
+(`packages/auth/src/httpapi.test.ts`), which uses an in-memory `AuthStorage`
+and a fake OAuth HTTP client to keep the auth suite fast and hermetic.
+
+## Environment variables
+
+See `.env.example` for the full template.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | Postgres connection (Docker defaults work) |
+| `RESEND_API_KEY` | no | Email delivery; unset → codes print to terminal |
+| `GOOGLE_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | no | Enable Google OAuth |
+| `LINKEDIN_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | no | Enable LinkedIn OAuth |
+| `GITHUB_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | no | Enable GitHub OAuth |
+| `GITHUB_USER_AGENT` | no | User-Agent for GitHub's API (recommended) |
 
 ## Conventions
 
-- Postgres is the source of truth; raw SQL via Effect's Postgres layer — no ORM.
-- Migrations are Effect programs; the auth package keeps its own schema
-  (`auth`) and journal so it coexists with app migrations.
-- Tests use a dedicated `scaffold_test` database created on demand
-  (`packages/core/src/test-utils.ts`).
-- No comments unless they carry information the code does not.
+- **Postgres is the source of truth** — raw SQL through Effect's Postgres
+  layer, no ORM. Migrations are Effect programs.
+- **Packages own their schema** — the auth package keeps its own `auth` schema
+  and journal, separate from application migrations, so it can be reused or
+  upgraded independently.
+- **The `HttpApi` contract is the single source of truth** — the server
+  implements it, the client is generated from it, and the tests exercise the
+  composed router through it.
+- **No comments unless they carry information the code does not.**
