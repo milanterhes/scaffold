@@ -1,7 +1,7 @@
 import { createNote, deleteNote, listNotes, updateNote } from "@app/notes"
 import type { Note, NoteId } from "@app/notes"
 import { CurrentUser } from "@app/auth/api"
-import { DateTime, Effect, Option } from "effect"
+import { Effect, Option } from "effect"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { NotesApi } from "./notes.api"
 
@@ -10,8 +10,8 @@ const toListItem = (note: Note) => ({
   user_id: note.user_id,
   title: note.title,
   body: note.body,
-  created_at: DateTime.fromDateUnsafe(note.created_at as unknown as Date),
-  updated_at: DateTime.fromDateUnsafe(note.updated_at as unknown as Date)
+  created_at: note.created_at,
+  updated_at: note.updated_at
 })
 
 /**

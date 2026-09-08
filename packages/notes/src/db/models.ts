@@ -9,6 +9,6 @@ export class Note extends Model.Class<Note>("scaffold/db/Note")({
   user_id: Model.GeneratedByApp(Schema.String),
   title: Schema.NonEmptyString,
   body: Schema.String,
-  created_at: Model.DateTimeInsert,
-  updated_at: Model.DateTimeUpdate
+  created_at: Model.DateTimeInsertFromDate,
+  updated_at: Model.DateTimeUpdateFromDate
 }) {}
