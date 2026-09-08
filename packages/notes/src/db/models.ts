@@ -6,7 +6,7 @@ export type NoteId = typeof NoteId.Type
 
 export class Note extends Model.Class<Note>("scaffold/db/Note")({
   id: Model.UuidV4Insert(NoteId),
-  user_id: Schema.String,
+  user_id: Model.GeneratedByApp(Schema.String),
   title: Schema.NonEmptyString,
   body: Schema.String,
   created_at: Model.DateTimeInsert,

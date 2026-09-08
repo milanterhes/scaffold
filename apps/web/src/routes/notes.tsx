@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { DateTime } from "effect"
 import { createNoteRequest, deleteNoteRequest, fetchNotes } from "../api/notes"
 import {
   Table,
@@ -86,7 +87,7 @@ function NotesPage() {
               <TableRow key={note.id}>
                 <TableCell>{note.title}</TableCell>
                 <TableCell>{note.body}</TableCell>
-                <TableCell>{new Date(note.created_at).toLocaleString()}</TableCell>
+                <TableCell>{DateTime.toDateUtc(note.created_at).toLocaleString()}</TableCell>
                 <TableCell>
                   <Button onClick={() => remove(note.id)}>Delete</Button>
                 </TableCell>
