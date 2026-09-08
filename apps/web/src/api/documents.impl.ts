@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { createDocument, confirmDocument, deleteDocument, getDocument, listDocuments } from "@app/documents"
+import { createDocument, confirmDocument, deleteDocument, getDocument, listDocuments } from "@app/documents/server"
 import type { Document, DocumentId } from "@app/documents"
 import type { StorageObject } from "@app/documents/storage"
 import { Storage } from "@app/documents/storage"

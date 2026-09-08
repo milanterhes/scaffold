@@ -1,4 +1,4 @@
-import { createNote, deleteNote, listNotes, updateNote } from "@app/notes"
+import { createNote, deleteNote, listNotes, updateNote } from "@app/notes/server"
 import type { Note, NoteId } from "@app/notes"
 import { CurrentUser } from "@app/auth/api"
 import { Effect, Option } from "effect"

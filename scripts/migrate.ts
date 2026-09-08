@@ -8,8 +8,8 @@ import {
 } from "@effect/platform-node"
 import { runAuthMigrations } from "@app/auth-postgres"
 import { migrations } from "@app/core"
-import { notesMigrations } from "@app/notes"
-import { documentsMigrations } from "@app/documents"
+import { notesMigrations } from "@app/notes/server"
+import { documentsMigrations } from "@app/documents/server"
 import { Config, Effect, Layer } from "effect"
 
 if (existsSync(".env")) {

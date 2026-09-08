@@ -3,7 +3,7 @@ import { Effect, Option } from "effect"
 import { SqlClient } from "effect/unstable/sql"
 import { randomUUID } from "node:crypto"
 import { setupTestDb, TestDbLayer } from "@app/core"
-import { notesMigrations } from "@app/notes"
+import { notesMigrations } from "@app/notes/server"
 import { DocumentId } from "../db/models.ts"
 import { documentsMigrations } from "../db/migrations.ts"
 import {

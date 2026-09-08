@@ -1,5 +1,2 @@
 export * from "./db/models.js"
-export * from "./db/migrations.js"
-export * from "./repo/notes.repo.js"
 export * from "./schema/api.js"
-export type { CreateNoteInput, UpdateNoteInput } from "./repo/notes.repo.js"
