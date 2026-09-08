@@ -12,26 +12,31 @@ import {
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { MemoryMailer } from "@app/auth"
 import { SessionMiddlewareLive } from "@app/auth/httpapi"
+import { MemoryStorageTest } from "@app/documents/storage"
 import { AuthLive } from "./auth.live"
 import { WebApi } from "./web.api"
 import { NotesImpl } from "./notes.impl"
+import { DocumentsImpl } from "./documents.impl"
 
 const BASE_URL = "http://localhost"
 
-// The notes group needs a `SqlClient`; a lazy `PgClient` layer satisfies the
-// requirement without connecting (pool creation is lazy). The auth groups run
-// on the memory `AuthStorage` — there is no `DATABASE_URL` in the test
-// process, so `AuthLive` falls back to the in-memory seam.
+// The notes and documents groups need a `SqlClient`; a lazy `PgClient` layer
+// satisfies the requirement without connecting (pool creation is lazy). The
+// auth groups run on the memory `AuthStorage` and documents on the in-memory
+// storage — there is no `DATABASE_URL` in the test process, so `AuthLive`
+// falls back to the in-memory seam.
 const LazyDb = PgClient.layer({
   url: Redacted.make("postgres://postgres:postgres@localhost:5432/scaffold_test")
 })
 
 const TestWebLayer = Layer.mergeAll(
   NotesImpl,
+  DocumentsImpl,
   AuthLive,
   NodeHttpClient.layerUndici
 ).pipe(
   Layer.provide(LazyDb),
+  Layer.provideMerge(MemoryStorageTest),
   Layer.provideMerge(HttpServer.layerServices),
   Layer.provideMerge(SessionMiddlewareLive)
 ) as unknown as Layer.Layer<never, never, never>

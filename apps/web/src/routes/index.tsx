@@ -26,6 +26,7 @@ function AuthBadge() {
     <p>
       <span>{me.email}</span>{" "}
       <Link to="/notes">My notes</Link>{" "}
+      <Link to="/documents">Documents</Link>{" "}
       <Button
         onClick={() => {
           signOut().then(() => queryClient.invalidateQueries({ queryKey: ["me"] }))

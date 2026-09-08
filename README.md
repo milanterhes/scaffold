@@ -24,6 +24,11 @@ same `HttpApi` contract the server implements.
 - **A complete worked example** — the `notes` package is a full vertical slice
   (schema → Postgres repo → `HttpApi` group → impl → typed client → React page
   → tests). Copy it to build your first feature.
+- **Object storage, the honest way** — the `documents` package uploads files
+  through S3-compatible storage (AWS S3 in production, Garage locally) via
+  presigned URLs: the client writes bytes straight to storage, and a confirm
+  endpoint HEAD-verifies size/content-type before the row flips `pending →
+  stored`.
 - **Real infra conventions** — Postgres via Docker, Effect migrations, a
   dedicated test database, Turbo-driven dev/test/lint/build across the
   monorepo.
@@ -46,6 +51,9 @@ packages/
   auth-resend/         Resend mailer. Falls back to a logger mailer with no key.
   core/                Shared Postgres client (PgLive) + test-database helpers.
   notes/               Demo domain: Model, migration, repo, schema, tests.
+  documents/           Demo object-storage domain: Model, migration, repo, a
+                       `Storage` seam over S3/Garage (presign, head, delete),
+                       schema, tests.
 scripts/
   migrate.ts           Applies app migrations, then the auth schema migrations.
 ```
@@ -77,12 +85,17 @@ The three tokens cover every reference: `@app` is the package scope (imports,
 name (repo/package name, Postgres database, model identifier, logger prefix),
 and `Scaffold` is the display name (page headings, `<title>`).
 
-### 2. Install and start Postgres
+### 2. Install and start Postgres and Garage
 
 ```bash
 pnpm install
 docker compose up -d        # postgres on :5432, database "scaffold"
+                            # garage (S3) on :3900, bucket "scaffold-documents"
 ```
+
+Garage is S3-compatible object storage for local development. It auto-creates a
+default access key, secret, and bucket (matching the `STORAGE_*` vars below); in
+production point the same vars at AWS S3 and set `STORAGE_FORCE_PATH_STYLE=false`.
 
 ### 3. Configure environment
 
@@ -90,9 +103,10 @@ docker compose up -d        # postgres on :5432, database "scaffold"
 cp .env.example .env        # then edit as needed
 ```
 
-Defaults are already usable: `DATABASE_URL` points at the Docker Postgres, and
-auth runs with email-code only (code printed to the terminal) until you add a
-`RESEND_API_KEY` or an OAuth provider.
+Defaults are already usable: `DATABASE_URL` points at the Docker Postgres, the
+`STORAGE_*` vars point at the Docker Garage, and auth runs with email-code only
+(code printed to the terminal) until you add a `RESEND_API_KEY` or an OAuth
+provider.
 
 ### 4. Migrate and run
 
@@ -102,7 +116,9 @@ pnpm dev                    # http://localhost:3000
 ```
 
 Sign in with any email, read the code from the server terminal, and you're in.
-The **My notes** link exercises the full vertical slice.
+The **My notes** link exercises the full vertical slice; the **Documents** link
+exercises upload → presigned PUT → confirm → list/download/delete against
+Garage.
 
 ## Authentication
 
@@ -198,7 +214,14 @@ vertical slice across a domain package and the web app:
    router, signs in through the real flow, and asserts on the endpoints.
 
 Wire the group into `apps/web/src/api/web.api.ts` (one `addHttpApi` line) and
-the impl into `mount.ts` (one `Layer.mergeAll` entry).
+the impl into `mount.ts` (one `Layer.mergeAll` entry); register any package
+migrations in `scripts/migrate.ts`.
+
+For docs that point at object storage, see `packages/documents` instead: a
+`Storage` seam (`Context.Service`) with an S3-backend implementation under
+`src/storage/s3.ts` and an in-memory double under `src/storage/test.ts`. The
+`HttpApi` group presigns PUT/GET URLs and the confirm endpoint HEAD-verifies the
+object against the row before flipping `pending → stored`.
 
 ## Commands
 
@@ -224,6 +247,13 @@ session-protected endpoints. This mirrors the auth package's own test harness
 (`packages/auth/src/httpapi.test.ts`), which uses an in-memory `AuthStorage`
 and a fake OAuth HTTP client to keep the auth suite fast and hermetic.
 
+The documents API test drives the full upload flow against an in-memory
+`Storage` double; the real S3/Garage integration is covered by
+`packages/documents/src/storage/s3.storage.test.ts`, a round-trip test that
+presigns a PUT, uploads raw bytes, heads them, presigns a GET, and deletes. It
+runs when `STORAGE_*` env vars are set (Garage via `docker compose up -d`) and
+skips otherwise.
+
 ## Environment variables
 
 See `.env.example` for the full template.
@@ -236,6 +266,16 @@ See `.env.example` for the full template.
 | `LINKEDIN_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | no | Enable LinkedIn OAuth |
 | `GITHUB_CLIENT_ID` / `_SECRET` / `_REDIRECT_URI` | no | Enable GitHub OAuth |
 | `GITHUB_USER_AGENT` | no | User-Agent for GitHub's API (recommended) |
+| `STORAGE_ENDPOINT` | docs only | S3-compatible endpoint; Garage by default (`http://localhost:3900`) |
+| `STORAGE_REGION` | docs only | Region sent to the store (`garage` for Garage) |
+| `STORAGE_BUCKET` | docs only | Bucket name (`scaffold-documents`) |
+| `STORAGE_ACCESS_KEY_ID` | docs only | Access key for the bucket |
+| `STORAGE_SECRET_ACCESS_KEY` | docs only | Secret for the bucket |
+| `STORAGE_FORCE_PATH_STYLE` | docs only | `true` for Garage/MinIO, `false` for AWS S3 |
+
+`STORAGE_*` are required only when the documents group is exercised (the storage
+layer fails at startup if they are absent). The `.env.example` / `docker-compose`
+values match the locally provisioned Garage bucket.
 
 ## Conventions
 

@@ -1,10 +1,12 @@
 import { NodeHttpClient } from "@effect/platform-node"
 import { PgLive } from "@app/core"
+import { S3StorageLive } from "@app/documents/storage"
 import { Effect, Layer, ManagedRuntime } from "effect"
 import { HttpEffect, HttpRouter, HttpServer, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { loadEnv } from "./env"
 import { NotesImpl } from "./notes.impl"
+import { DocumentsImpl } from "./documents.impl"
 import { AuthLive } from "./auth.live"
 import { SessionMiddlewareLive } from "@app/auth/httpapi"
 import { WebApi } from "./web.api"
@@ -23,8 +25,9 @@ loadEnv()
  *
  * `NodeHttpClient.layerUndici` gives the auth OAuth flow a real `HttpClient`.
  */
-const ApiLive = Layer.mergeAll(NotesImpl, AuthLive).pipe(
+const ApiLive = Layer.mergeAll(NotesImpl, DocumentsImpl, AuthLive).pipe(
   Layer.provide(PgLive),
+  Layer.provide(S3StorageLive),
   Layer.provideMerge(SessionMiddlewareLive),
   Layer.provideMerge(NodeHttpClient.layerUndici),
   Layer.provideMerge(HttpServer.layerServices)

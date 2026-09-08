@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
@@ -17,6 +18,11 @@ import { Route as ApiSplatRouteImport } from './routes/api/$'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentsRoute = DocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotesRoute = NotesRouteImport.update({
@@ -37,12 +43,14 @@ const ApiSplatRoute = ApiSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/documents': typeof DocumentsRoute
   '/notes': typeof NotesRoute
   '/signin': typeof SigninRoute
   '/api/$': typeof ApiSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/documents': typeof DocumentsRoute
   '/notes': typeof NotesRoute
   '/signin': typeof SigninRoute
   '/api/$': typeof ApiSplatRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/documents': typeof DocumentsRoute
   '/notes': typeof NotesRoute
   '/signin': typeof SigninRoute
   '/api/$': typeof ApiSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/notes' | '/signin' | '/api/$'
+  fullPaths: '/' | '/documents' | '/notes' | '/signin' | '/api/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/notes' | '/signin' | '/api/$'
-  id: '__root__' | '/' | '/notes' | '/signin' | '/api/$'
+  to: '/' | '/documents' | '/notes' | '/signin' | '/api/$'
+  id: '__root__' | '/' | '/documents' | '/notes' | '/signin' | '/api/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DocumentsRoute: typeof DocumentsRoute
   NotesRoute: typeof NotesRoute
   SigninRoute: typeof SigninRoute
   ApiSplatRoute: typeof ApiSplatRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documents': {
+      id: '/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof DocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notes': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DocumentsRoute: DocumentsRoute,
   NotesRoute: NotesRoute,
   SigninRoute: SigninRoute,
   ApiSplatRoute: ApiSplatRoute,
