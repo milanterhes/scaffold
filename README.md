@@ -248,3 +248,10 @@ See `.env.example` for the full template.
   implements it, the client is generated from it, and the tests exercise the
   composed router through it.
 - **No comments unless they carry information the code does not.**
+
+## Agent skills
+
+This repo carries the engineering-skill framework under `.agents/skills/`
+(routed via `/ask-matt`), with the per-repo configuration in `docs/agents/` and
+an issue tracker as local markdown under `.scratch/`. See `AGENTS.md` for the
+summary; `skills-lock.json` records each skill's upstream source and hash.**
