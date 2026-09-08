@@ -20,6 +20,5 @@
     "sourceMap": true,
     "composite": true,
     "incremental": true,
-    "types": []
   }
 }
