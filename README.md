@@ -140,6 +140,29 @@ Each falls back gracefully: without `DATABASE_URL` auth uses memory storage,
 without a Resend key codes print to the terminal, and OAuth providers only
 appear on the sign-in page when their env vars are set.
 
+### Branding the sign-in email
+
+The sign-in-code email copy (from address, subject, body) is not hardcoded
+anywhere. The `Mailer` implementations render an `EmailCodeTemplate` service
+supplied by your app; `DefaultEmailCodeTemplate` provides a neutral fallback
+(`no-reply@example.com` / "Your sign-in code"). Brand it at the composition
+root:
+
+```ts
+import { EmailCodeTemplate } from "@app/auth"
+
+export const AppEmailCodeTemplate = Layer.succeed(EmailCodeTemplate, {
+  from: "Acme <no-reply@acme.com>",
+  subject: "Your Acme sign-in code",
+  text: (code) => `Your Acme sign-in code is ${code}.`
+})
+```
+
+Provide it alongside the auth layers (e.g. `Layer.provideMerge(AppEmailCodeTemplate)`
+where `AuthLive` is assembled). The Resend mailer sends exactly this copy; the
+logger mailer prints it to the terminal, so local development shows the same
+message your users receive.
+
 ### OAuth providers
 
 Enable any provider by adding its credentials to `.env`. The redirect URIs

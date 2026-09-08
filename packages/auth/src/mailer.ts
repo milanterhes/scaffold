@@ -14,6 +14,30 @@ export class Mailer extends Context.Service<Mailer, {
 export type MailerService = Mailer["Service"]
 
 /**
+ * The copy for a sign-in-code email: the `from` address, subject line, and
+ * body text. Implementations (Resend, logger) render these fields; apps
+ * provide their own template to brand the message without editing package
+ * code. `DefaultEmailCodeTemplate` is a neutral fallback with no brand.
+ */
+export class EmailCodeTemplate extends Context.Service<EmailCodeTemplate, {
+  readonly from: string
+  readonly subject: string
+  readonly text: (code: string) => string
+}>()("app/auth/EmailCodeTemplate") {}
+
+export type EmailCodeTemplateService = EmailCodeTemplate["Service"]
+
+/** A neutral, brand-free template. Override with `Layer.succeed` in your app. */
+export const DefaultEmailCodeTemplate: Layer.Layer<EmailCodeTemplate> = Layer.succeed(
+  EmailCodeTemplate,
+  {
+    from: "no-reply@example.com",
+    subject: "Your sign-in code",
+    text: (code) => `Your sign-in code is ${code}.`
+  }
+)
+
+/**
  * A mailer that records sent messages for test assertions, installed alongside
  * the `Mailer` service it implements. `sent` returns everything sent so far;
  * `clear` empties the log.
@@ -46,16 +70,20 @@ export const MemoryMailerLayer: Layer.Layer<Mailer | MemoryMailer> = Layer.effec
 )
 
 /**
- * A development `Mailer` that prints each code to the terminal so a developer
- * can copy it into the sign-in form. Also records into `MemoryMailer`, keeping
- * the code readable through the same service tests use.
+ * A development `Mailer` that prints the email it would have sent to the
+ * terminal so a developer can read the code into the sign-in form. The copy
+ * comes from `EmailCodeTemplate`, so it stays in sync with the live mailer.
+ * Also records into `MemoryMailer`, keeping the code readable through the same
+ * service tests use.
  */
-export const LoggerMailerLayer: Layer.Layer<Mailer | MemoryMailer> = Layer.effectContext(
+export const LoggerMailerLayer: Layer.Layer<Mailer | MemoryMailer, never, EmailCodeTemplate> = Layer.effectContext(
   Effect.gen(function*() {
+    const template = yield* EmailCodeTemplate
     const messages: Array<{ to: string; code: string }> = []
     const sendEmailCode = (to: string, code: string) =>
       Effect.sync(() => {
-        console.log(`[scaffold:auth] sign-in code for ${to}: ${code}`)
+        console.log(`[auth] sign-in code for ${to}: ${code}`)
+        console.log(`[auth] would send — subject: "${template.subject}" text: "${template.text(code)}"`)
         messages.push({ to, code })
       })
     const mailer = Mailer.of({ sendEmailCode })

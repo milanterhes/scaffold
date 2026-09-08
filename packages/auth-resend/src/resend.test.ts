@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest"
 import { Effect, Layer, Option } from "effect"
 import { Headers, HttpBody, HttpClient, HttpClientResponse } from "effect/unstable/http"
-import { Mailer } from "@app/auth"
+import { DefaultEmailCodeTemplate, Mailer } from "@app/auth"
 import { ResendMailerLayer } from "./resend.ts"
 
 const RESEND_API_URL = "https://api.resend.com/emails"
@@ -40,7 +40,8 @@ const makeFakeResend = () => {
 const makeTestLayer = () => {
   const fake = makeFakeResend()
   const TestLayer: Layer.Layer<Mailer, never, never> = ResendMailerLayer.pipe(
-    Layer.provide(Layer.succeed(HttpClient.HttpClient, fake.client))
+    Layer.provide(Layer.succeed(HttpClient.HttpClient, fake.client)),
+    Layer.provide(DefaultEmailCodeTemplate)
   )
   return { fake, TestLayer }
 }
@@ -61,10 +62,10 @@ describe("ResendMailer", () => {
       expect(req?.url).toBe(RESEND_API_URL)
       expect(req?.authorization).toBe("Bearer re_123")
       expect(req?.body).toEqual({
-        from: "Scaffold <no-reply@scaffold.dev>",
+        from: "no-reply@example.com",
         to: ["alice@example.com"],
-        subject: "Your Scaffold sign-in code",
-        text: "Your Scaffold sign-in code is ABCDEFGH."
+        subject: "Your sign-in code",
+        text: "Your sign-in code is ABCDEFGH."
       })
     } finally {
       if (previous === undefined) delete process.env.RESEND_API_KEY

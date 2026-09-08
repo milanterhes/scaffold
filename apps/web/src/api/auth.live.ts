@@ -1,5 +1,6 @@
 import { NodeCrypto, NodeHttpClient } from "@effect/platform-node"
 import {
+  DefaultEmailCodeTemplate,
   HasherLive,
   IdTokenVerifierLive,
   LoggerMailerLayer,
@@ -35,11 +36,14 @@ export const AuthStorageLive = AuthStoragePostgresLayer.pipe(
 /**
  * The `Mailer` seam for the web runtime. Uses Resend when `RESEND_API_KEY` is
  * configured; otherwise falls back to the logger mailer so local sign-in works
- * without email infrastructure — codes print to the server terminal.
+ * without email infrastructure — codes print to the server terminal. The
+ * neutral `DefaultEmailCodeTemplate` supplies the email copy; brand it by
+ * providing your own `EmailCodeTemplate` layer instead.
  */
 export const MailerLive = ResendMailerLayer.pipe(
   Layer.provide(NodeHttpClient.layerUndici),
-  Layer.catchCause(() => LoggerMailerLayer)
+  Layer.catchCause(() => LoggerMailerLayer),
+  Layer.provide(DefaultEmailCodeTemplate)
 )
 
 /**
