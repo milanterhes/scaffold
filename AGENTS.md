@@ -18,7 +18,7 @@ This repo is a scaffold built to demonstrate idiomatic Effect 4 usage. Prefer th
 ## Build, test, and run
 
 - Local Postgres: `docker compose up -d` (a shared `jobdetective-postgres-1` container is also used; port 5432). This also starts Garage (S3-compatible object storage) on :3900 with bucket `scaffold-documents`.
-- Migrations: `pnpm migrate` (creates the `scaffold` DB; test DB `scaffold_test` is created by the test harness).
+- Migrations: `pnpm migrate` (creates the `scaffold` DB; test DB `scaffold_test` is created by the test harness). First-time object-storage setup: `pnpm setup:object-storage` (configures CORS on the local Garage bucket; Garage auto-provisions the bucket/keys but not CORS, and only the browser upload path needs it).
 - Dev server: `cd apps/web && npx vite dev` (API is mounted at `/api` inside the Start server).
 - Tests: `pnpm test` (vitest), `pnpm lint`, `pnpm build`. The real-Garage storage round-trip test (`packages/documents/src/storage/s3.storage.test.ts`) runs when `STORAGE_*` env vars are set and skips otherwise; set them from `.env` to exercise it.
 

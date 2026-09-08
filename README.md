@@ -97,6 +97,13 @@ Garage is S3-compatible object storage for local development. It auto-creates a
 default access key, secret, and bucket (matching the `STORAGE_*` vars below); in
 production point the same vars at AWS S3 and set `STORAGE_FORCE_PATH_STYLE=false`.
 
+The documents page uploads/downloads **directly from the browser** (presigned
+URLs), so the local Garage bucket needs CORS rules once:
+
+```bash
+pnpm setup:object-storage       # configures CORS on the local bucket (idempotent)
+```
+
 ### 3. Configure environment
 
 ```bash
@@ -112,6 +119,7 @@ provider.
 
 ```bash
 pnpm migrate                # app migrations + auth migrations
+pnpm setup:object-storage   # CORS on the local Garage bucket (idempotent)
 pnpm dev                    # http://localhost:3000
 ```
 
@@ -232,6 +240,7 @@ object against the row before flipping `pending → stored`.
 | `pnpm test` | Run every package's Vitest suite |
 | `pnpm lint` | `tsc --noEmit` across the repo |
 | `pnpm migrate` | Apply app migrations, then the auth-schema migrations |
+| `pnpm setup:object-storage` | Configure CORS on the local Garage bucket (idempotent) |
 | `pnpm --filter <pkg> <task>` | Target a single package |
 
 ## Testing

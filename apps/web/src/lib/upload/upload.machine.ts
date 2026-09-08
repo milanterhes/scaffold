@@ -44,7 +44,7 @@ export class UploadApi extends Context.Service<UploadApi, {
 }>()("app/web/UploadApi") {}
 
 const Root = Machine.state({
-  initial: "Idle",
+  initial: "Creating",
   fields: {
     filename: Schema.String,
     content_type: Schema.String,

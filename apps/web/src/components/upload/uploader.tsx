@@ -2,7 +2,7 @@ import { AtomMachine } from "@typeonce/effect-machine/reactivity"
 import { createMachineContext, MachineState } from "@typeonce/effect-machine-react"
 import { useAtomSuspense, useAtomSet } from "@effect/atom-react"
 import { Atom } from "effect/unstable/reactivity"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { UploadMachine, UploadEvents, type UploadApi } from "../../lib/upload/upload.machine"
 import { UploadApiLive } from "../../lib/upload/upload.api"
 import { Button } from "@/components/ui/button"
@@ -23,13 +23,21 @@ type UploadMachineAtom = ReturnType<typeof Upload.useMachine>
 
 export function Uploader({ onStored }: { readonly onStored?: () => void }) {
   const [file, setFile] = useState<File | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   if (file === null) {
     return (
-      <label className="inline-block cursor-pointer">
-        <input type="file" className="hidden" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-        <Button type="button">Choose a file to upload</Button>
-      </label>
+      <>
+        <input
+          ref={inputRef}
+          type="file"
+          className="hidden"
+          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+        />
+        <Button type="button" onClick={() => inputRef.current?.click()}>
+          Choose a file to upload
+        </Button>
+      </>
     )
   }
 
