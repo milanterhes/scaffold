@@ -1,37 +1,63 @@
 # Scaffold
 
 A production-shaped starter for a full-stack TypeScript app: session-based
-authentication, a Postgres-backed domain, and a TanStack Start front end — all
-wired together, tested, and ready to copy. Add your first real feature by
-following the included `notes` example.
+authentication, a Postgres-backed domain, and object storage — wired together,
+tested, and ready to copy. Everything is **Effect-first**: the API, the auth
+protocol, the database layer, and the tests are built on
+[Effect](https://effect.website/) 4. The front end is TanStack Start + React +
+shadcn, consuming a typed client generated from the same `HttpApi` contract the
+server implements.
 
-Everything is **Effect-first**: the API, the auth protocol, the database layer,
-and the tests are built on [Effect](https://effect.website/) 4. The front end is
-TanStack Start + React + shadcn, consuming a typed client generated from the
-same `HttpApi` contract the server implements.
-
-## Features that work out of the box
-
-- **Email-code sign-in** — no email provider needed to try it. Without a
-  `RESEND_API_KEY` the code is printed to the server terminal.
-- **OAuth** — Google, LinkedIn, and GitHub, each switched on by setting three
-  env vars. OIDC (Google, LinkedIn) and OAuth2 (GitHub) are both handled.
-- **Sessions** — HttpOnly cookie with sliding expiry; any handler behind
-  `SessionMiddleware` gets a `CurrentUser` for free.
-- **Account linking** — the same verified email across email + OAuth merges
-  into one account; unverified OAuth emails are forced through email-code
-  verification. A privacy / "delete me" endpoint ships with it.
-- **A complete worked example** — the `notes` package is a full vertical slice
-  (schema → Postgres repo → `HttpApi` group → impl → typed client → React page
-  → tests). Copy it to build your first feature.
-- **Object storage, the honest way** — the `documents` package uploads files
-  through S3-compatible storage (AWS S3 in production, Garage locally) via
-  presigned URLs: the client writes bytes straight to storage, and a confirm
-  endpoint HEAD-verifies size/content-type before the row flips `pending →
-  stored`.
+- **Auth that works out of the box** — email-code sign-in (codes print to the
+  terminal until you add Resend), Google/LinkedIn/GitHub OAuth, HttpOnly
+  sessions with sliding expiry, and account linking. No provider required to
+  try it.
+- **A complete vertical slice to copy** — the `notes` package is the template:
+  schema → Postgres repo → `HttpApi` group → impl → typed client → React page →
+  tests.
+- **Object storage done honestly** — the `documents` package uploads through
+  S3-compatible storage (AWS S3 in production, Garage locally) via presigned
+  URLs; a confirm endpoint HEAD-verifies the object before the row flips
+  `pending → stored`.
 - **Real infra conventions** — Postgres via Docker, Effect migrations, a
-  dedicated test database, Turbo-driven dev/test/lint/build across the
-  monorepo.
+  dedicated test database, Turbo-driven dev/test/lint/build across the monorepo.
+
+## Quick start
+
+```bash
+# 1. Install and start infra (Postgres + Garage object storage)
+pnpm install
+docker compose up -d
+
+# 2. Configure env (defaults already point at the Docker services)
+cp .env.example .env
+
+# 3. Migrate, configure object-storage CORS, and run
+pnpm migrate
+pnpm setup:object-storage      # idempotent; only the browser upload path needs it
+pnpm dev                       # http://localhost:3000
+```
+
+Sign in with any email and read the code from the server terminal — you're in.
+The **My notes** link exercises the full vertical slice; the **Documents** link
+runs the upload → presigned PUT → confirm → list/download/delete flow against
+Garage.
+
+### Rename it to your project
+
+```bash
+cp -R scaffold my-app && cd my-app
+# Replace the package scope and app name everywhere they appear, then refresh
+# the lockfile.
+grep -rIl --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git \
+  --exclude-dir=.turbo --exclude=pnpm-lock.yaml -e '@app' -e 'scaffold' -e 'Scaffold' . \
+  | xargs sed -i '' -e 's/@app/YOUR_SCOPE/g' -e 's/scaffold/my-app/g' -e 's/Scaffold/My App/g'
+rm -rf pnpm-lock.yaml node_modules && pnpm install
+```
+
+Three tokens cover every reference: `@app` (package scope / imports),
+`scaffold` (repo name, Postgres database, model identifier, logger prefix), and
+`Scaffold` (display name in headings and `<title>`).
 
 ## Repository layout
 
@@ -39,9 +65,9 @@ same `HttpApi` contract the server implements.
 apps/
   web/                 TanStack Start SPA; the Effect HttpApi is mounted at
                        /api/* inside the same server process.
-    src/api/           HttpApi groups (notes), auth wiring, typed clients
-    src/routes/        __root, index, signin, notes, api/$ (the API splat)
-    components/ui/     shadcn components (button, table, …)
+    src/api/           HttpApi groups (notes, documents), auth wiring, typed clients
+    src/routes/        __root, index, signin, notes, documents, api/$ (the API splat)
+    components/        shadcn components + the effect-machine uploader
 packages/
   auth/                The auth core — pure Effect, no DB/email/HTTP deps:
                        email-code + OAuth protocol, sessions, linking, privacy.
@@ -56,81 +82,32 @@ packages/
                        schema, tests.
 scripts/
   migrate.ts           Applies app migrations, then the auth schema migrations.
+  setup-object-storage.ts  Configures CORS on the local Garage bucket.
 ```
 
-The `apps/web` app composes the auth and notes `HttpApi` groups into one
-`WebApi` and mounts it at `/api/*` via a TanStack Start server route
+The `apps/web` app composes the auth, notes, and documents `HttpApi` groups into
+one `WebApi` and mounts it at `/api/*` via a TanStack Start server route
 (`src/routes/api/$.ts`). All packages share one `tsconfig.base.json`
 (`strict`, `exactOptionalPropertyTypes`, `erasableSyntaxOnly`) and one pnpm
 version catalog.
 
-## Quick start
-
-### 1. Copy and (optionally) rename
-
-Keep it as `scaffold`/`@app` and skip to step 2, or rename in one pass:
-
-```bash
-cp -R scaffold my-app && cd my-app
-# Replace the package scope and app name everywhere they appear.
-# Re-run `pnpm install` afterwards to refresh the lockfile.
-grep -rIl --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git \
-  --exclude-dir=.turbo --exclude=pnpm-lock.yaml -e '@app' -e 'scaffold' -e 'Scaffold' . \
-  | xargs sed -i '' -e 's/@app/YOUR_SCOPE/g' -e 's/scaffold/my-app/g' -e 's/Scaffold/My App/g'
-rm -rf pnpm-lock.yaml node_modules && pnpm install
-```
-
-The three tokens cover every reference: `@app` is the package scope (imports,
-`package.json` names, `tsconfig` references), `scaffold` is the lower-case
-name (repo/package name, Postgres database, model identifier, logger prefix),
-and `Scaffold` is the display name (page headings, `<title>`).
-
-### 2. Install and start Postgres and Garage
-
-```bash
-pnpm install
-docker compose up -d        # postgres on :5432, database "scaffold"
-                            # garage (S3) on :3900, bucket "scaffold-documents"
-```
-
-Garage is S3-compatible object storage for local development. It auto-creates a
-default access key, secret, and bucket (matching the `STORAGE_*` vars below); in
-production point the same vars at AWS S3 and set `STORAGE_FORCE_PATH_STYLE=false`.
-
-The documents page uploads/downloads **directly from the browser** (presigned
-URLs), so the local Garage bucket needs CORS rules once:
-
-```bash
-pnpm setup:object-storage       # configures CORS on the local bucket (idempotent)
-```
-
-### 3. Configure environment
-
-```bash
-cp .env.example .env        # then edit as needed
-```
-
-Defaults are already usable: `DATABASE_URL` points at the Docker Postgres, the
-`STORAGE_*` vars point at the Docker Garage, and auth runs with email-code only
-(code printed to the terminal) until you add a `RESEND_API_KEY` or an OAuth
-provider.
-
-### 4. Migrate and run
-
-```bash
-pnpm migrate                # app migrations + auth migrations
-pnpm setup:object-storage   # CORS on the local Garage bucket (idempotent)
-pnpm dev                    # http://localhost:3000
-```
-
-Sign in with any email, read the code from the server terminal, and you're in.
-The **My notes** link exercises the full vertical slice; the **Documents** link
-exercises upload → presigned PUT → confirm → list/download/delete against
-Garage.
-
 ## Authentication
 
-### Endpoints
+`packages/auth` is deliberately dependency-free. The three external concerns are
+interfaces you provide at the app's composition root
+(`apps/web/src/api/auth.live.ts`):
+
+| Seam | Default implementation | Swap for |
+| --- | --- | --- |
+| `AuthStorage` | Postgres (`auth-postgres`) | In-memory for tests |
+| `Mailer` | Resend (`auth-resend`) | Logger mailer (no key) |
+| `OAuthPendingStore` | Postgres (`auth-postgres`) | In-memory for tests |
+
+Everything that needs a user is behind `SessionMiddleware`; missing, invalid, or
+expired sessions return `401`, and a rotated token is re-issued on the response
+automatically. OAuth providers only appear on the sign-in page when their env
+vars are set. Enable any provider by adding its credentials to `.env` — see the
+[provider notes](#oauth-providers) below.
 
 The auth group is served under `/api/auth/*`:
 
@@ -143,26 +120,6 @@ The auth group is served under `/api/auth/*`:
 | `POST` | `/auth/signout` | Clear the session cookie, invalidate server-side |
 | `GET` | `/auth/me` | The current user (session required) |
 | `DELETE` | `/auth/me` | Delete the account and all auth data |
-
-Everything that needs a user is behind `SessionMiddleware`; missing, invalid,
-or expired sessions return `401`, and a rotated token is re-issued on the
-response automatically.
-
-### Seams
-
-`packages/auth` is deliberately dependency-free. The three external concerns
-are interfaces you provide at the app's composition root
-(`apps/web/src/api/auth.live.ts`):
-
-| Seam | Default implementation | Swap for |
-| --- | --- | --- |
-| `AuthStorage` | Postgres (`auth-postgres`) | In-memory for tests |
-| `Mailer` | Resend (`auth-resend`) | Logger mailer (no key) |
-| `OAuthPendingStore` | Postgres (`auth-postgres`) | In-memory for tests |
-
-Each falls back gracefully: without `DATABASE_URL` auth uses memory storage,
-without a Resend key codes print to the terminal, and OAuth providers only
-appear on the sign-in page when their env vars are set.
 
 ### Branding the sign-in email
 
@@ -182,22 +139,10 @@ export const AppEmailCodeTemplate = Layer.succeed(EmailCodeTemplate, {
 })
 ```
 
-Provide it alongside the auth layers (e.g. `Layer.provideMerge(AppEmailCodeTemplate)`
-where `AuthLive` is assembled). The Resend mailer sends exactly this copy; the
-logger mailer prints it to the terminal, so local development shows the same
-message your users receive.
-
-### OAuth providers
-
-Enable any provider by adding its credentials to `.env`. The redirect URIs
-(`http://localhost:3000/api/auth/oauth/<provider>/callback`) must be registered
-with the provider.
-
-| Provider | Env prefix | Notes |
-| --- | --- | --- |
-| Google | `GOOGLE_` | OIDC |
-| LinkedIn | `LINKEDIN_` | OIDC |
-| GitHub | `GITHUB_` | OAuth2; set `GITHUB_USER_AGENT` too (GitHub rejects the default) |
+Provide it alongside the auth layers (e.g.
+`Layer.provideMerge(AppEmailCodeTemplate)` where `AuthLive` is assembled). The
+Resend mailer sends exactly this copy; the logger mailer prints it to the
+terminal, so local development shows the same message your users receive.
 
 ## Adding your first feature
 
@@ -207,26 +152,26 @@ vertical slice across a domain package and the web app:
 1. **Domain package** — `packages/<feature>/`
    - `src/db/models.ts` — a `Model.Class` for your table (branded id, typed
      columns).
-   - `src/db/migrations.ts` — the migration, as an Effect program. It is
-     merged into the migrator by `scripts/migrate.ts`.
-   - `src/repo/*.repo.ts` — `Effect.fnUntraced` functions that talk to
-     Postgres through `SqlClient` (no ORM).
-   - `src/schema/api.ts` — the API wire schemas (`Schema.Struct` etc.).
+   - `src/db/migrations.ts` — the migration, as an Effect program, merged into
+     the migrator by `scripts/migrate.ts`.
+   - `src/repo/*.repo.ts` — `Effect.fnUntraced` functions talking to Postgres
+     through `SqlClient` (no ORM).
+   - `src/schema/api.ts` — the API wire schemas.
    - Tests alongside: `src/repo/*.repo.test.ts` using the shared test DB.
 2. **HTTP group** — `apps/web/src/api/<feature>.api.ts` declares endpoints
-   (guard them with `SessionMiddleware`), `<feature>.impl.ts` implements them
-   with `HttpApiBuilder.group`, and `<feature>.ts` is the typed client.
-3. **Route + page** — `apps/web/src/routes/<feature>.tsx` using the typed
-   client and the shadcn components.
+   (guarded by `SessionMiddleware`), `<feature>.impl.ts` implements them with
+   `HttpApiBuilder.group`, and `<feature>.ts` is the typed client.
+3. **Route + page** — `apps/web/src/routes/<feature>.tsx` using the typed client
+   and the shadcn components.
 4. **API test** — `apps/web/src/api/<feature>.api.test.ts` builds the composed
    router, signs in through the real flow, and asserts on the endpoints.
 
-Wire the group into `apps/web/src/api/web.api.ts` (one `addHttpApi` line) and
-the impl into `mount.ts` (one `Layer.mergeAll` entry); register any package
+Wire the group into `apps/web/src/api/web.api.ts` (one `addHttpApi` line), the
+impl into `mount.ts` (one `Layer.mergeAll` entry), and register any package
 migrations in `scripts/migrate.ts`.
 
 For docs that point at object storage, see `packages/documents` instead: a
-`Storage` seam (`Context.Service`) with an S3-backend implementation under
+`Storage` seam (`Context.Service`) with an S3 backend under
 `src/storage/s3.ts` and an in-memory double under `src/storage/test.ts`. The
 `HttpApi` group presigns PUT/GET URLs and the confirm endpoint HEAD-verifies the
 object against the row before flipping `pending → stored`.
@@ -245,16 +190,15 @@ object against the row before flipping `pending → stored`.
 
 ## Testing
 
-Vitest runs in every package. DB-backed tests use a dedicated
-`scaffold_test` database that is created on demand and migrated in
-`beforeAll` (`packages/core/src/test-utils.ts` exports `setupTestDb` and
-`TestDbLayer`).
+Vitest runs in every package. DB-backed tests use a dedicated `scaffold_test`
+database, created on demand and migrated in `beforeAll`
+(`packages/core/src/test-utils.ts` exports `setupTestDb` and `TestDbLayer`).
 
 The web API tests exercise the **real composed router** through a fetch-style
 bridge — sign-in via the actual email-code flow, then assertions against the
 session-protected endpoints. This mirrors the auth package's own test harness
-(`packages/auth/src/httpapi.test.ts`), which uses an in-memory `AuthStorage`
-and a fake OAuth HTTP client to keep the auth suite fast and hermetic.
+(`packages/auth/src/httpapi.test.ts`), which uses an in-memory `AuthStorage` and
+a fake OAuth HTTP client to keep the auth suite fast and hermetic.
 
 The documents API test drives the full upload flow against an in-memory
 `Storage` double; the real S3/Garage integration is covered by
@@ -285,12 +229,31 @@ See `.env.example` for the full template.
 
 `STORAGE_*` are required only when the documents group is exercised (the storage
 layer fails at startup if they are absent). The `.env.example` / `docker-compose`
-values match the locally provisioned Garage bucket.
+values match the locally provisioned Garage bucket. In production, point the
+same vars at AWS S3 and set `STORAGE_FORCE_PATH_STYLE=false`.
 
-## Conventions
+## OAuth providers
 
-- **Postgres is the source of truth** — raw SQL through Effect's Postgres
-  layer, no ORM. Migrations are Effect programs.
+Enable any provider by adding its credentials to `.env`. The redirect URIs
+(`http://localhost:3000/api/auth/oauth/<provider>/callback`) must be registered
+with the provider.
+
+| Provider | Env prefix | Notes |
+| --- | --- | --- |
+| Google | `GOOGLE_` | OIDC |
+| LinkedIn | `LINKEDIN_` | OIDC |
+| GitHub | `GITHUB_` | OAuth2; set `GITHUB_USER_AGENT` too (GitHub rejects the default) |
+
+## Docs & conventions
+
+- **Architecture decisions** live in
+  [`docs/architecture-decisions.md`](docs/architecture-decisions.md) (ADRs in
+  one file) — read the sections touching the area you're about to work in.
+- **Repository guidelines** for agents (and humans) are in
+  [`AGENTS.md`](AGENTS.md): Effect patterns, build/test/run commands, and the
+  agent-skill framework under `.agents/skills/`.
+- **Postgres is the source of truth** — raw SQL through Effect's Postgres layer,
+  no ORM. Migrations are Effect programs.
 - **Packages own their schema** — the auth package keeps its own `auth` schema
   and journal, separate from application migrations, so it can be reused or
   upgraded independently.
@@ -299,9 +262,8 @@ values match the locally provisioned Garage bucket.
   composed router through it.
 - **No comments unless they carry information the code does not.**
 
-## Agent skills
+## License
 
-This repo carries the engineering-skill framework under `.agents/skills/`
-(routed via `/ask-matt`), with the per-repo configuration in `docs/agents/` and
-an issue tracker as local markdown under `.scratch/`. See `AGENTS.md` for the
-summary; `skills-lock.json` records each skill's upstream source and hash.**
+This is a scaffold for you to build on — copy it, rename it, and make it yours.
+No license file is shipped; choose one that fits your project if you publish
+it.
