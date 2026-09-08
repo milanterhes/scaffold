@@ -12,6 +12,7 @@
     "rewriteRelativeImportExtensions": false,
     "types": ["vite/client", "node"],
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@/*": ["./*"]
     }
