@@ -281,6 +281,7 @@ See `.env.example` for the full template.
 | `STORAGE_ACCESS_KEY_ID` | docs only | Access key for the bucket |
 | `STORAGE_SECRET_ACCESS_KEY` | docs only | Secret for the bucket |
 | `STORAGE_FORCE_PATH_STYLE` | docs only | `true` for Garage/MinIO, `false` for AWS S3 |
+| `MAX_DOCUMENT_SIZE_BYTES` | no | Document upload limit in bytes (default 5 GiB, S3's single-PUT ceiling). Larger values need multipart uploads |
 
 `STORAGE_*` are required only when the documents group is exercised (the storage
 layer fails at startup if they are absent). The `.env.example` / `docker-compose`

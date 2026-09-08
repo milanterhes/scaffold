@@ -9,6 +9,15 @@ import { createDocumentRequest, confirmDocumentRequest, fetchDocument } from "..
  * file).
  */
 
+/** Pull a human-readable reason out of a failed API call, if one exists. */
+const reasonFrom = (error: unknown, fallback: string): string => {
+  if (error !== null && typeof error === "object" && "message" in error) {
+    const message = (error as { message: unknown }).message
+    if (typeof message === "string" && message.length > 0) return message
+  }
+  return fallback
+}
+
 /** Build a live `UploadApi` layer bound to a specific file's bytes. */
 export const UploadApiLive = (file: File): Layer.Layer<UploadApi> =>
   Layer.effect(
@@ -17,7 +26,9 @@ export const UploadApiLive = (file: File): Layer.Layer<UploadApi> =>
       return UploadApi.of({
         createDocument: (input) =>
           Effect.tryPromise(() => createDocumentRequest(input)).pipe(
-            Effect.mapError(() => new UploadApiError({ message: "failed to create document" })),
+            Effect.mapError((error) =>
+              new UploadApiError({ message: reasonFrom(error, "failed to create document") })
+            ),
             Effect.andThen(({ document, uploadUrl }) => Effect.succeed({ id: document.id, uploadUrl }))
           ),
         putObject: (uploadUrl, content_type, onProgress) =>
@@ -47,7 +58,9 @@ export const UploadApiLive = (file: File): Layer.Layer<UploadApi> =>
           }),
         confirmDocument: (id) =>
           Effect.tryPromise(() => confirmDocumentRequest(id)).pipe(
-            Effect.mapError(() => new UploadApiError({ message: "failed to confirm document" })),
+            Effect.mapError((error) =>
+              new UploadApiError({ message: reasonFrom(error, "failed to confirm document") })
+            ),
             Effect.as(void 0)
           ),
         resumeDocument: (id) =>

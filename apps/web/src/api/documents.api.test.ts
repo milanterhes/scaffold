@@ -234,6 +234,20 @@ it.effect("404s for a missing document", () =>
     })
   ))
 
+it.effect("rejects an oversized document at create with a clear message", () =>
+  withApi((run) =>
+    Effect.gen(function*() {
+      const token = yield* signInWithEmailCode(run, "docs-large@example.com")
+      const created = yield* call(run, "POST", "/me/documents", {
+        token,
+        body: { filename: "huge.bin", content_type: "application/octet-stream", size_bytes: 6 * 1024 ** 3 }
+      })
+      expect(created.status).toBe(409)
+      const body = created.body as { message?: string }
+      expect(body.message).toContain("upload limit")
+    })
+  ))
+
 it.effect("scopes documents to the owning user", () =>
   withApi((run) =>
     Effect.gen(function*() {
