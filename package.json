@@ -17,6 +17,7 @@
     "@app/documents": "workspace:*",
     "@app/jobs": "workspace:*",
     "@app/notes": "workspace:*",
+    "@app/notifications": "workspace:*",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "effect": "catalog:"
