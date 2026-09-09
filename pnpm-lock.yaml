@@ -244,6 +244,9 @@ importers:
       '@app/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
+      '@app/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1)

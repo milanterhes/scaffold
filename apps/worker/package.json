@@ -13,6 +13,7 @@
   "dependencies": {
     "@app/core": "workspace:*",
     "@app/jobs": "workspace:*",
+    "@app/notifications": "workspace:*",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "effect": "catalog:"
