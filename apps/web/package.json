@@ -18,6 +18,7 @@
     "@app/documents": "workspace:*",
     "@app/jobs": "workspace:*",
     "@app/notes": "workspace:*",
+    "@app/notifications": "workspace:*",
     "@base-ui/react": "^1.7.0",
     "@effect/atom-react": "catalog:",
     "@effect/platform-node": "catalog:",

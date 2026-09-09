@@ -7,6 +7,7 @@ import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { loadEnv } from "./env"
 import { NotesImpl } from "./notes.impl"
 import { DocumentsImpl } from "./documents.impl"
+import { NotificationsImpl } from "./notifications.impl"
 import { AuthLive } from "./auth.live"
 import { SessionMiddlewareLive } from "@app/auth/httpapi"
 import { WebApi } from "./web.api"
@@ -25,7 +26,7 @@ loadEnv()
  *
  * `NodeHttpClient.layerUndici` gives the auth OAuth flow a real `HttpClient`.
  */
-const ApiLive = Layer.mergeAll(NotesImpl, DocumentsImpl, AuthLive).pipe(
+const ApiLive = Layer.mergeAll(NotesImpl, DocumentsImpl, NotificationsImpl, AuthLive).pipe(
   Layer.provide(PgLive),
   Layer.provide(S3StorageLive),
   Layer.provideMerge(SessionMiddlewareLive),
