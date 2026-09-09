@@ -1,5 +1,5 @@
 import { beforeAll, expect, it } from "@effect/vitest"
-import { Effect, Option, Schema } from "effect"
+import { Effect, Option, Result, Schema } from "effect"
 import { SqlClient, SqlError } from "effect/unstable/sql"
 import { randomUUID } from "node:crypto"
 import { setupTestDb, TestDbLayer } from "@app/core"
@@ -8,7 +8,7 @@ import { notesMigrations } from "@app/notes/server"
 import { Job, JobId } from "../db/models.ts"
 import type { JobPayload } from "../db/models.ts"
 import { jobsMigrations } from "../db/migrations.ts"
-import { claimJobs, completeJob, emitEvent, failJob, retryJob } from "./jobs.repo.ts"
+import { claimJobs, completeJob, emitEvent, failJob, listJobs, retryJob } from "./jobs.repo.ts"
 
 // The jobs repo tests run the FULL application migration set so the shared
 // scaffold_test DB has every table regardless of test run order.
@@ -74,6 +74,94 @@ it.effect("emitEvent inserts an outbox event readable through the model", () =>
       expect(event.consumed_at).toBeNull()
     } finally {
       yield* sql`DELETE FROM outbox WHERE id = ${event.id}`
+    }
+  }).pipe(Effect.provide(TestDbLayer)))
+
+it.effect("emitEvent commits atomically with the domain write and rolls back when it fails", () =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    const committed = randomUUID()
+    const rolledBack = randomUUID()
+    let jobId: JobId | null = null
+    try {
+      // Success path: the emit and a domain write in one transaction commit together.
+      const job = yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* emitEvent("document.uploaded", { documentId: committed })
+          return yield* insertJob("mail", {})
+        })
+      )
+      jobId = job.id
+      const kept = yield* sql<{ readonly count: number }>`
+        SELECT count(*)::int AS count FROM outbox WHERE payload ->> 'documentId' = ${committed}
+      `
+      expect(kept[0].count).toBe(1)
+
+      // Failure path: the same transaction failing rolls the outbox row back too.
+      const outcome = yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* emitEvent("document.uploaded", { documentId: rolledBack })
+          yield* Effect.fail(new Error("simulated domain write failure"))
+        })
+      ).pipe(Effect.result)
+      expect(Result.isFailure(outcome)).toBe(true)
+      const gone = yield* sql<{ readonly count: number }>`
+        SELECT count(*)::int AS count FROM outbox WHERE payload ->> 'documentId' = ${rolledBack}
+      `
+      expect(gone[0].count).toBe(0)
+    } finally {
+      if (jobId !== null) yield* sql`DELETE FROM jobs WHERE id = ${jobId}`
+      yield* sql`DELETE FROM outbox WHERE payload ->> 'documentId' IN ${sql.in([committed, rolledBack])}`
+    }
+  }).pipe(Effect.provide(TestDbLayer)))
+
+it.effect("claimJobs leases a claim and reclaims a running job past its lease", () =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    const job = yield* insertJob("mail", {})
+    try {
+      const claimed = yield* claimJobs("worker-a", 1)
+      expect(claimed.map((j) => j.id)).toEqual([job.id])
+      expect(claimed[0].status).toBe("running")
+
+      // A fresh claim carries a `run_after` lease in the future, so it is not
+      // immediately reclaimable.
+      const fresh = yield* sql<{ readonly status: string; readonly run_after: Date }>`
+        SELECT status, run_after FROM jobs WHERE id = ${job.id}
+      `
+      expect(fresh[0].status).toBe("running")
+      expect(fresh[0].run_after.getTime()).toBeGreaterThan(Date.now())
+      expect(yield* claimJobs("worker-a", 1)).toEqual([])
+
+      // A worker that died mid-job leaves a `running` row; once its lease
+      // lapses another worker reclaims it.
+      yield* sql`UPDATE jobs SET run_after = now() - interval '1 second' WHERE id = ${job.id}`
+      const reclaimed = yield* claimJobs("worker-b", 1)
+      expect(reclaimed.map((j) => j.id)).toEqual([job.id])
+      expect(reclaimed[0].status).toBe("running")
+    } finally {
+      yield* sql`DELETE FROM jobs WHERE id = ${job.id}`
+    }
+  }).pipe(Effect.provide(TestDbLayer)))
+
+it.effect("listJobs surfaces jobs by status (dead-job visibility)", () =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    const a = yield* insertJob("mail", {})
+    const b = yield* insertJob("mail", {})
+    const pending = yield* insertJob("mail", {})
+    try {
+      yield* sql`UPDATE jobs SET status = 'dead' WHERE id IN ${sql.in([a.id, b.id])}`
+      const dead = yield* listJobs("dead", 50)
+      expect(new Set(dead.map((j) => j.id))).toEqual(new Set([a.id, b.id]))
+      expect(dead.every((job) =>
+        job.status === "dead"
+      )).toBe(true)
+
+      const stillPending = yield* listJobs("pending", 50)
+      expect(stillPending.map((j) => j.id)).toEqual([pending.id])
+    } finally {
+      yield* sql`DELETE FROM jobs WHERE id IN ${sql.in([a.id, b.id, pending.id])}`
     }
   }).pipe(Effect.provide(TestDbLayer)))
 
