@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocumentsRouteImport } from './routes/documents'
 import { Route as NotesRouteImport } from './routes/notes'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 
@@ -30,6 +31,11 @@ const NotesRoute = NotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/documents': typeof DocumentsRoute
   '/notes': typeof NotesRoute
+  '/notifications': typeof NotificationsRoute
   '/signin': typeof SigninRoute
   '/api/$': typeof ApiSplatRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/documents': typeof DocumentsRoute
   '/notes': typeof NotesRoute
+  '/notifications': typeof NotificationsRoute
   '/signin': typeof SigninRoute
   '/api/$': typeof ApiSplatRoute
 }
@@ -60,21 +68,31 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/documents': typeof DocumentsRoute
   '/notes': typeof NotesRoute
+  '/notifications': typeof NotificationsRoute
   '/signin': typeof SigninRoute
   '/api/$': typeof ApiSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/documents' | '/notes' | '/signin' | '/api/$'
+  fullPaths:
+    '/' | '/documents' | '/notes' | '/notifications' | '/signin' | '/api/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/documents' | '/notes' | '/signin' | '/api/$'
-  id: '__root__' | '/' | '/documents' | '/notes' | '/signin' | '/api/$'
+  to: '/' | '/documents' | '/notes' | '/notifications' | '/signin' | '/api/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/documents'
+    | '/notes'
+    | '/notifications'
+    | '/signin'
+    | '/api/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DocumentsRoute: typeof DocumentsRoute
   NotesRoute: typeof NotesRoute
+  NotificationsRoute: typeof NotificationsRoute
   SigninRoute: typeof SigninRoute
   ApiSplatRoute: typeof ApiSplatRoute
 }
@@ -102,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signin': {
       id: '/signin'
       path: '/signin'
@@ -123,6 +148,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DocumentsRoute: DocumentsRoute,
   NotesRoute: NotesRoute,
+  NotificationsRoute: NotificationsRoute,
   SigninRoute: SigninRoute,
   ApiSplatRoute: ApiSplatRoute,
 }

@@ -77,9 +77,15 @@ importers:
       '@app/documents':
         specifier: workspace:*
         version: link:packages/documents
+      '@app/jobs':
+        specifier: workspace:*
+        version: link:packages/jobs
       '@app/notes':
         specifier: workspace:*
         version: link:packages/notes
+      '@app/notifications':
+        specifier: workspace:*
+        version: link:packages/notifications
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1)
@@ -129,9 +135,15 @@ importers:
       '@app/documents':
         specifier: workspace:*
         version: link:../../packages/documents
+      '@app/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
       '@app/notes':
         specifier: workspace:*
         version: link:../../packages/notes
+      '@app/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
       '@base-ui/react':
         specifier: ^1.7.0
         version: 1.8.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -226,6 +238,37 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+
+  apps/worker:
+    dependencies:
+      '@app/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@app/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
+      '@app/notifications':
+        specifier: workspace:*
+        version: link:../../packages/notifications
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1)
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112
+    devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.13
 
   packages/auth:
     dependencies:
@@ -343,6 +386,34 @@ importers:
         specifier: 'catalog:'
         version: 4.23.13
 
+  packages/jobs:
+    dependencies:
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112
+    devDependencies:
+      '@app/core':
+        specifier: workspace:*
+        version: link:../core
+      '@app/documents':
+        specifier: workspace:*
+        version: link:../documents
+      '@app/notes':
+        specifier: workspace:*
+        version: link:../notes
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.13
+
   packages/notes:
     dependencies:
       '@effect/sql-pg':
@@ -355,6 +426,37 @@ importers:
       '@app/core':
         specifier: workspace:*
         version: link:../core
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.13
+
+  packages/notifications:
+    dependencies:
+      '@app/jobs':
+        specifier: workspace:*
+        version: link:../jobs
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112
+    devDependencies:
+      '@app/core':
+        specifier: workspace:*
+        version: link:../core
+      '@app/documents':
+        specifier: workspace:*
+        version: link:../documents
+      '@app/notes':
+        specifier: workspace:*
+        version: link:../notes
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))

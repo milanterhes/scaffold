@@ -4,18 +4,21 @@
   "type": "module",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "dev": "turbo run dev --filter @app/web",
+    "dev": "turbo run dev --filter @app/web --filter @app/worker",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
     "migrate": "tsx scripts/migrate.ts",
-    "setup:object-storage": "tsx scripts/setup-object-storage.ts"
+    "setup:object-storage": "tsx scripts/setup-object-storage.ts",
+    "jobs:retry-dead": "tsx scripts/retry-dead-job.ts"
   },
   "dependencies": {
     "@app/auth-postgres": "workspace:*",
     "@app/core": "workspace:*",
     "@app/documents": "workspace:*",
+    "@app/jobs": "workspace:*",
     "@app/notes": "workspace:*",
+    "@app/notifications": "workspace:*",
     "@effect/platform-node": "catalog:",
     "@effect/sql-pg": "catalog:",
     "effect": "catalog:"

@@ -1,0 +1,37 @@
+{
+  "name": "@app/notifications",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@app/jobs": "workspace:*",
+    "@effect/sql-pg": "catalog:",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@app/core": "workspace:*",
+    "@app/documents": "workspace:*",
+    "@app/notes": "workspace:*",
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
+  }
+}

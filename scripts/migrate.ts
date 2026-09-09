@@ -10,6 +10,8 @@ import { runAuthMigrations } from "@app/auth-postgres"
 import { migrations } from "@app/core"
 import { notesMigrations } from "@app/notes/server"
 import { documentsMigrations } from "@app/documents/server"
+import { jobsMigrations } from "@app/jobs/server"
+import { notificationsMigrations } from "@app/notifications/server"
 import { Config, Effect, Layer } from "effect"
 
 if (existsSync(".env")) {
@@ -19,7 +21,7 @@ if (existsSync(".env")) {
 const SqlClientLayer = PgClient.layerConfig({ url: Config.redacted("DATABASE_URL") })
 
 const MigratorLayer = PgMigrator.layer({
-  loader: PgMigrator.fromRecord({ ...migrations, ...notesMigrations, ...documentsMigrations })
+  loader: PgMigrator.fromRecord({ ...migrations, ...notesMigrations, ...documentsMigrations, ...jobsMigrations, ...notificationsMigrations })
 })
 
 const SqlLive = MigratorLayer.pipe(Layer.provideMerge(SqlClientLayer))
