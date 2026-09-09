@@ -2,10 +2,13 @@ import { PgClient } from "@effect/sql-pg"
 import { randomUUID } from "node:crypto"
 import { Effect, Option, Schema } from "effect"
 import { SqlClient, SqlError } from "effect/unstable/sql"
-import { Job, JobId, OutboxEvent, OutboxEventId } from "../db/models.ts"
+import { Job, JobId, JobState, OutboxEvent, OutboxEventId } from "../db/models.ts"
 import type { JobPayload } from "../db/models.ts"
 
 const JOB_COLUMNS = "id, job_type, payload, status, attempts, max_attempts, run_after, last_error, created_at, updated_at"
+
+/** How long a claimed job's lease lasts; a `running` job past its lease is reclaimable. */
+const JOB_LEASE_SECONDS = 60
 
 /**
  * Decode raw driver rows into `Job` values. Postgres returns `timestamptz`
@@ -81,11 +84,15 @@ export const drainOutbox = Effect.fnUntraced(function*(
 })
 
 /**
- * Claim up to `limit` due `pending` jobs, flipping them to `running`. Rows are
- * locked with `FOR UPDATE SKIP LOCKED` so concurrent workers each claim a
- * disjoint set; `run_after` is compared against the database clock. The
- * `workerId` identifies the claiming process for observability but is not
- * stored (the schema tracks no owner).
+ * Claim up to `limit` due jobs, flipping them to `running` under a fresh
+ * `run_after` lease (`now() + 60s`). Due means a `pending` job past its
+ * `run_after`, or a `running` job whose lease has expired — the crash-recovery
+ * path: a worker that dies mid-job leaves a `running` row, which another
+ * worker reclaims once the lease lapses. Rows are locked with `FOR UPDATE
+ * SKIP LOCKED` so concurrent workers each claim a disjoint set; `run_after`
+ * is compared against the database clock. The `workerId` identifies the
+ * claiming process for observability but is not stored (the schema tracks no
+ * owner).
  */
 export const claimJobs = Effect.fnUntraced(function*(
   _workerId: string,
@@ -94,16 +101,39 @@ export const claimJobs = Effect.fnUntraced(function*(
   const sql = yield* SqlClient.SqlClient
   const rows = yield* sql`
     UPDATE jobs
-    SET status = 'running', updated_at = now()
+    SET status = 'running',
+        run_after = now() + make_interval(secs => ${sql.unsafe(String(JOB_LEASE_SECONDS))}),
+        updated_at = now()
     WHERE id IN (
       SELECT id
       FROM jobs
-      WHERE status = 'pending' AND run_after <= now()
+      WHERE (status = 'pending' AND run_after <= now())
+         OR (status = 'running' AND run_after <= now())
       ORDER BY run_after, created_at, id
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
     )
     RETURNING ${sql.unsafe(JOB_COLUMNS)}
+  `
+  return rows.map(decodeJob)
+})
+
+/**
+ * Read `limit` jobs in a given `status` — the dead-job visibility read (no
+ * admin UI; surface dead jobs to an operator so `retryJob` can re-run them).
+ * Newest first.
+ */
+export const listJobs = Effect.fnUntraced(function*(
+  status: JobState,
+  limit: number
+): Effect.fn.Return<ReadonlyArray<Job>, SqlError.SqlError | Schema.SchemaError, SqlClient.SqlClient> {
+  const sql = yield* SqlClient.SqlClient
+  const rows = yield* sql`
+    SELECT ${sql.unsafe(JOB_COLUMNS)}
+    FROM jobs
+    WHERE status = ${status}
+    ORDER BY updated_at DESC, id
+    LIMIT ${limit}
   `
   return rows.map(decodeJob)
 })

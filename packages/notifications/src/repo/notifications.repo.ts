@@ -36,7 +36,12 @@ export const createNotification = Effect.fnUntraced(function*(
   return decodeNotification(rows[0])
 })
 
-/** A user's notifications, newest first, up to `limit` rows. */
+/**
+ * A user's notifications, newest first, up to `limit` rows.
+ *
+ * Cursor pagination is a future follow-up; the API hard-caps its call at
+ * LIMIT 50 per the notifications spec.
+ */
 export const listNotifications = Effect.fnUntraced(function*(
   userId: string,
   limit: number
@@ -69,14 +74,18 @@ export const markRead = Effect.fnUntraced(function*(
   return rows.length === 0 ? Option.none() : Option.some(decodeNotification(rows[0]))
 })
 
-/** Mark all of a user's unread notifications read, returning the rows changed. */
+/**
+ * Mark all of a user's unread notifications read, returning the rows changed.
+ * Idempotent: `COALESCE` keeps an already-set `read_at`, so concurrent calls
+ * (e.g. two tabs) converge without clobbering or erroring.
+ */
 export const markAllRead = Effect.fnUntraced(function*(
   userId: string
 ): Effect.fn.Return<ReadonlyArray<Notification>, SqlError.SqlError | Schema.SchemaError, SqlClient.SqlClient> {
   const sql = yield* SqlClient.SqlClient
   const rows = yield* sql`
     UPDATE notifications
-    SET read_at = now()
+    SET read_at = COALESCE(read_at, now())
     WHERE user_id = ${userId} AND read_at IS NULL
     RETURNING id, user_id, type, title, body, read_at, created_at
   `

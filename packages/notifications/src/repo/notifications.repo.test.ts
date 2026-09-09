@@ -87,3 +87,34 @@ it.effect("markAllRead marks only the user's unread notifications", () =>
       yield* sql`DELETE FROM notifications WHERE user_id = ${userId} OR user_id = ${otherUserId}`
     }
   }).pipe(Effect.provide(TestDbLayer)))
+
+it.effect("markAllRead is user-scoped and converges under concurrent calls", () =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    const userId = randomUUID()
+    const otherUserId = randomUUID()
+    try {
+      yield* createNotification(userId, "document_uploaded", "Upload confirmed", "a.txt was stored")
+      yield* createNotification(userId, "document_uploaded", "Upload confirmed", "b.txt was stored")
+      yield* createNotification(userId, "document_uploaded", "Upload confirmed", "c.txt was stored")
+      yield* createNotification(otherUserId, "document_uploaded", "Upload confirmed", "d.txt was stored")
+
+      const [first, second] = yield* Effect.all([markAllRead(userId), markAllRead(userId)], { concurrency: 2 })
+
+      // Both calls succeed and together cover every unread row; the second
+      // call marks nothing new (idempotent), never errors.
+      const marked = [...first, ...second]
+      expect(marked).toHaveLength(3)
+      expect(marked.every((n) => n.read_at !== null)).toBe(true)
+      expect(new Set(marked.map((n) => n.id)).size).toBe(3)
+
+      const all = yield* listNotifications(userId, 50)
+      expect(all).toHaveLength(3)
+      expect(all.every((n) => n.read_at !== null)).toBe(true)
+
+      const other = yield* listNotifications(otherUserId, 50)
+      expect(other.every((n) => n.read_at === null)).toBe(true)
+    } finally {
+      yield* sql`DELETE FROM notifications WHERE user_id = ${userId} OR user_id = ${otherUserId}`
+    }
+  }).pipe(Effect.provide(TestDbLayer)))

@@ -69,3 +69,41 @@ it.effect("deliverNotification no-ops on a payload that is not a document.upload
       yield* sql`DELETE FROM notifications WHERE user_id = ${userId}`
     }
   }).pipe(Effect.provide(TestDbLayer)))
+
+it.effect("deliverNotification caps an over-long filename at 200 chars before rendering", () =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    const userId = randomUUID()
+    try {
+      yield* deliverNotification(jobWithPayload({
+        userId,
+        documentId: randomUUID(),
+        filename: "a".repeat(500),
+        sizeBytes: 1
+      }))
+      const rows = yield* listNotifications(userId, 50)
+      expect(rows).toHaveLength(1)
+      expect(rows[0].body).toBe(`${"a".repeat(197)}... was stored`)
+    } finally {
+      yield* sql`DELETE FROM notifications WHERE user_id = ${userId}`
+    }
+  }).pipe(Effect.provide(TestDbLayer)))
+
+it.effect("deliverNotification renders the filename verbatim as plain text, never as HTML", () =>
+  Effect.gen(function*() {
+    const sql = yield* SqlClient.SqlClient
+    const userId = randomUUID()
+    try {
+      yield* deliverNotification(jobWithPayload({
+        userId,
+        documentId: randomUUID(),
+        filename: "<script>alert(1)</script>.pdf",
+        sizeBytes: 1
+      }))
+      const rows = yield* listNotifications(userId, 50)
+      expect(rows).toHaveLength(1)
+      expect(rows[0].body).toBe("<script>alert(1)</script>.pdf was stored")
+    } finally {
+      yield* sql`DELETE FROM notifications WHERE user_id = ${userId}`
+    }
+  }).pipe(Effect.provide(TestDbLayer)))

@@ -9,7 +9,8 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "migrate": "tsx scripts/migrate.ts",
-    "setup:object-storage": "tsx scripts/setup-object-storage.ts"
+    "setup:object-storage": "tsx scripts/setup-object-storage.ts",
+    "jobs:retry-dead": "tsx scripts/retry-dead-job.ts"
   },
   "dependencies": {
     "@app/auth-postgres": "workspace:*",
