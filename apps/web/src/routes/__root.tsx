@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router"
 import appCss from "../styles/app.css?url"
+import { NotificationBell } from "../components/notifications/bell"
 
 export interface RouterContext {
   readonly queryClient: QueryClient
@@ -23,6 +24,7 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
+        <NotificationBell />
         <Outlet />
       </QueryClientProvider>
     </RootDocument>

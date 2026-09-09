@@ -17,14 +17,15 @@ import { AuthLive } from "./auth.live"
 import { WebApi } from "./web.api"
 import { NotesImpl } from "./notes.impl"
 import { DocumentsImpl } from "./documents.impl"
+import { NotificationsImpl } from "./notifications.impl"
 
 const BASE_URL = "http://localhost"
 
-// The notes and documents groups need a `SqlClient`; a lazy `PgClient` layer
-// satisfies the requirement without connecting (pool creation is lazy). The
-// auth groups run on the memory `AuthStorage` and documents on the in-memory
-// storage — there is no `DATABASE_URL` in the test process, so `AuthLive`
-// falls back to the in-memory seam.
+// The notes, documents, and notifications groups need a `SqlClient`; a lazy
+// `PgClient` layer satisfies the requirement without connecting (pool creation
+// is lazy). The auth groups run on the memory `AuthStorage` and documents on
+// the in-memory storage — there is no `DATABASE_URL` in the test process, so
+// `AuthLive` falls back to the in-memory seam.
 const LazyDb = PgClient.layer({
   url: Redacted.make("postgres://postgres:postgres@localhost:5432/scaffold_test")
 })
@@ -32,6 +33,7 @@ const LazyDb = PgClient.layer({
 const TestWebLayer = Layer.mergeAll(
   NotesImpl,
   DocumentsImpl,
+  NotificationsImpl,
   AuthLive,
   NodeHttpClient.layerUndici
 ).pipe(
