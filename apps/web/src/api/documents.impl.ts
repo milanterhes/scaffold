@@ -3,8 +3,10 @@ import { createDocument, confirmDocument, deleteDocument, getDocument, listDocum
 import type { Document, DocumentId } from "@app/documents"
 import type { StorageObject } from "@app/documents/storage"
 import { Storage } from "@app/documents/storage"
+import { emitEvent } from "@app/jobs/server"
 import { CurrentUser } from "@app/auth/api"
 import { Config, Effect, Option } from "effect"
+import { SqlClient } from "effect/unstable/sql"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import { DocumentsApi, DocumentTooLarge } from "./documents.api"
 
@@ -95,7 +97,26 @@ export const DocumentsImpl = HttpApiBuilder.group(DocumentsApi, "documents", (ha
         if (document.state === "stored") {
           return toListItem(document)
         }
-        const confirmed = yield* confirmDocument(user.id, params.id as DocumentId).pipe(Effect.orDie)
+        // The `pending → stored` flip and the outbox emit commit together: both
+        // run inside one transaction, so a confirmed upload always emits and a
+        // rolled-back confirm never does.
+        const sql = yield* SqlClient.SqlClient
+        const confirmed = yield* sql.withTransaction(
+          Effect.gen(function*() {
+            const confirmed = yield* confirmDocument(user.id, params.id as DocumentId).pipe(Effect.orDie)
+            if (Option.isNone(confirmed)) {
+              return Option.none<Document>()
+            }
+            const value = confirmed.value
+            yield* emitEvent("document.uploaded", {
+              userId: user.id,
+              documentId: value.id,
+              filename: value.filename,
+              sizeBytes: value.size_bytes
+            })
+            return confirmed
+          })
+        ).pipe(Effect.orDie)
         if (Option.isNone(confirmed)) {
           return yield* new HttpApiError.NotFound({})
         }

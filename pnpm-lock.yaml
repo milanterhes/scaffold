@@ -132,6 +132,9 @@ importers:
       '@app/documents':
         specifier: workspace:*
         version: link:../../packages/documents
+      '@app/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
       '@app/notes':
         specifier: workspace:*
         version: link:../../packages/notes
@@ -229,6 +232,34 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)
+
+  apps/worker:
+    dependencies:
+      '@app/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@app/jobs':
+        specifier: workspace:*
+        version: link:../../packages/jobs
+      '@effect/platform-node':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1)
+      '@effect/sql-pg':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112
+    devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.11(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.13
 
   packages/auth:
     dependencies:
