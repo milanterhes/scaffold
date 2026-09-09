@@ -16,6 +16,7 @@
     "@app/auth-resend": "workspace:*",
     "@app/core": "workspace:*",
     "@app/documents": "workspace:*",
+    "@app/jobs": "workspace:*",
     "@app/notes": "workspace:*",
     "@base-ui/react": "^1.7.0",
     "@effect/atom-react": "catalog:",

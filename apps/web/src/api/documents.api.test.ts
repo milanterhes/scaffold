@@ -17,6 +17,7 @@ import { runAuthMigrations } from "@app/auth-postgres"
 import { setupTestDb, TestDbLayer } from "@app/core"
 import { notesMigrations } from "@app/notes/server"
 import { documentsMigrations } from "@app/documents/server"
+import { jobsMigrations } from "@app/jobs/server"
 import { MemoryStorageStore, MemoryStorageTest } from "@app/documents/storage"
 import { SqlClient, SqlError } from "effect/unstable/sql"
 import { randomUUID } from "node:crypto"
@@ -27,7 +28,7 @@ import { NotesImpl } from "./notes.impl"
 import { AuthLive } from "./auth.live"
 
 beforeAll(async () => {
-  await Effect.runPromise(setupTestDb({ ...notesMigrations, ...documentsMigrations }))
+  await Effect.runPromise(setupTestDb({ ...notesMigrations, ...documentsMigrations, ...jobsMigrations }))
   await Effect.runPromise(runAuthMigrations.pipe(Effect.provide(TestDbLayer)))
 })
 
@@ -123,6 +124,7 @@ const cleanupDocuments = Effect.fnUntraced(function*(
 ): Effect.fn.Return<void, SqlError.SqlError, SqlClient.SqlClient> {
   const sql = yield* SqlClient.SqlClient
   yield* sql`DELETE FROM documents WHERE user_id = ${userId}`
+  yield* sql`DELETE FROM outbox WHERE payload ->> 'userId' = ${userId}`
 })
 
 const getUserId = (run: Run, token: string): Effect.Effect<string, unknown, any> =>
@@ -161,6 +163,16 @@ it.effect("creates a pending document, uploads bytes, confirms, lists, downloads
         expect(confirmed.status).toBe(200)
         expect((confirmed.body as { state: string }).state).toBe("stored")
 
+        // 3b. Confirm success transactionally emitted a document.uploaded outbox event
+        const sql = yield* SqlClient.SqlClient
+        const outbox = yield* sql`SELECT event_type, payload FROM outbox WHERE payload ->> 'documentId' = ${createdBody.document.id}`
+        expect(outbox).toHaveLength(1)
+        expect(outbox[0].event_type).toBe("document.uploaded")
+        const payload = outbox[0].payload as { userId: string; filename: string; sizeBytes: number }
+        expect(payload.userId).toBe(userId)
+        expect(payload.filename).toBe("manual.pdf")
+        expect(payload.sizeBytes).toBe(11)
+
         // 4. List shows the stored document
         const listed = yield* call(run, "GET", "/me/documents", { token })
         const docs = listed.body as Array<{ id: string; state: string; filename: string }>
@@ -198,6 +210,10 @@ it.effect("confirm 409s when the object was never uploaded", () =>
         const id = (created.body as { document: { id: string } }).document.id
         const confirmed = yield* call(run, "POST", `/me/documents/${id}/confirm`, { token })
         expect(confirmed.status).toBe(409)
+        // Failed uploads don't notify: no outbox event for this document
+        const sql = yield* SqlClient.SqlClient
+        const outbox = yield* sql`SELECT count(*)::int AS count FROM outbox WHERE payload ->> 'documentId' = ${id}`
+        expect(outbox[0].count).toBe(0)
       } finally {
         yield* cleanupDocuments(userId)
       }
@@ -219,6 +235,10 @@ it.effect("confirm 409s when upload size mismatches the row", () =>
         yield* store.put(createdBody.document.storage_key, new TextEncoder().encode("too long!!"), "text/plain")
         const confirmed = yield* call(run, "POST", `/me/documents/${createdBody.document.id}/confirm`, { token })
         expect(confirmed.status).toBe(409)
+        // Failed uploads don't notify: no outbox event for this document
+        const sql = yield* SqlClient.SqlClient
+        const outbox = yield* sql`SELECT count(*)::int AS count FROM outbox WHERE payload ->> 'documentId' = ${createdBody.document.id}`
+        expect(outbox[0].count).toBe(0)
       } finally {
         yield* cleanupDocuments(userId)
       }

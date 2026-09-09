@@ -38,6 +38,49 @@ export const emitEvent = Effect.fnUntraced(function*(
 })
 
 /**
+ * Drain up to `limit` unconsumed outbox events into jobs of `jobType`, marking
+ * each event consumed. The claim, inserts, and consumed marks run in one
+ * transaction, so a crash cannot turn one event into a duplicate job. Rows are
+ * locked with `FOR UPDATE SKIP LOCKED` so concurrent workers each take a
+ * disjoint set. Returns the jobs created.
+ */
+export const drainOutbox = Effect.fnUntraced(function*(
+  jobType: string,
+  limit: number
+): Effect.fn.Return<ReadonlyArray<Job>, SqlError.SqlError | Schema.SchemaError, PgClient.PgClient> {
+  const sql = yield* PgClient.PgClient
+  return yield* sql.withTransaction(
+    Effect.gen(function*(): Effect.gen.Return<
+      ReadonlyArray<Job>,
+      SqlError.SqlError | Schema.SchemaError,
+      PgClient.PgClient
+    > {
+      const events = yield* sql`
+        SELECT id, event_type, payload, created_at, consumed_at
+        FROM outbox
+        WHERE consumed_at IS NULL
+        ORDER BY created_at, id
+        LIMIT ${limit}
+        FOR UPDATE SKIP LOCKED
+      `
+      const jobs: Array<Job> = []
+      for (const row of events) {
+        const event = decodeOutboxEvent(row)
+        const id = randomUUID() as JobId
+        const created = yield* sql`
+          INSERT INTO jobs (id, job_type, payload)
+          VALUES (${id}, ${jobType}, ${sql.json(event.payload)})
+          RETURNING ${sql.unsafe(JOB_COLUMNS)}
+        `
+        yield* sql`UPDATE outbox SET consumed_at = now() WHERE id = ${event.id}`
+        jobs.push(decodeJob(created[0]))
+      }
+      return jobs
+    })
+  )
+})
+
+/**
  * Claim up to `limit` due `pending` jobs, flipping them to `running`. Rows are
  * locked with `FOR UPDATE SKIP LOCKED` so concurrent workers each claim a
  * disjoint set; `run_after` is compared against the database clock. The
